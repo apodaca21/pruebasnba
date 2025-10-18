@@ -1,4 +1,10 @@
 /* ESTILO DE LA HOME PAGE */
+
+:root {
+    --nav-h: 80px; /* altura navbar */
+    --bottom-h: 70px; /* altura bottom bar */
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -7,7 +13,7 @@ html, body {
 }
 
 .navbar {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -15,41 +21,56 @@ html, body {
     background: rgba(255, 255, 255, 0.95) !important;
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    height: var(--nav-h);
+}
+
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    height: var(--bottom-h);
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
 }
 
 .home-hero {
+
     position: relative;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - var(--nav-h) - var(--bottom-h));
+    padding-top: calc(var(--nav-h) + 16px);
+    padding-bottom: calc(var(--bottom-h) + 22px);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    isolation: isolate;
     overflow: hidden;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
 }
 
-.home-hero::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('/images/wallpaperHOME.jpg') center/cover no-repeat;
-    opacity: 0.3;
-    z-index: 1;
-}
+    .home-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url('/images/wallpaperHOME.jpg') center/cover no-repeat;
+        opacity: 0.30;
+        z-index: -1;
+        pointer-events: none;
+    }
 
 .hero-content {
     position: relative;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
+    z-index: 1;
     max-width: 1200px;
     width: 100%;
     padding: 2rem;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
 }
 
 .hero-text {
