@@ -18,7 +18,8 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  margin: 0;
+  padding: 0;
 }
 
 .comparison-photo {
@@ -26,4 +27,108 @@ body {
     height: 350px;
     object-fit: cover;
     border-radius: 8px;
+}
+
+/* BARRA DE NAVEGACION */
+.navbar.bg-dark-custom {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+    padding: 1rem 0;
+    border-bottom: 2px solid rgba(234, 88, 12, 0.3);
+}
+
+.navbar-brand.brand-custom {
+    font-size: 1.5rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: white !important;
+    transition: all 0.3s ease;
+}
+
+.brand-icon {
+    font-size: 1.8rem;
+}
+
+.brand-text {
+    color: white;
+}
+
+.brand-highlight {
+    color: #fb923c;
+    margin-left: 0.2rem;
+}
+
+.nav-link-custom {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-link-custom:hover {
+    color: #fb923c !important;
+    background: rgba(251, 146, 60, 0.1);
+}
+
+.nav-link-custom.active {
+    color: #fb923c !important;
+    background: rgba(251, 146, 60, 0.15);
+}
+
+.nav-link-custom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: #fb923c;
+    transition: width 0.3s ease;
+}
+
+.nav-link-custom:hover::after {
+    width: 80%;
+}
+
+/* Footer personalizado */
+.footer-custom {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 1.5rem 0;
+    margin-top: 0;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.footer-link {
+    color: #fb923c;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #ea580c;
+    text-decoration: underline;
+}
+
+/* Ajustes responsive */
+@media (max-width: 768px) {
+    .navbar.bg-dark-custom {
+        padding: 0.75rem 0;
+    }
+    
+    .navbar-brand.brand-custom {
+        font-size: 1.3rem;
+    }
+    
+    .brand-icon {
+        font-size: 1.5rem;
+    }
+    
+    .nav-link-custom {
+        padding: 0.75rem 1rem !important;
+    }
 }
