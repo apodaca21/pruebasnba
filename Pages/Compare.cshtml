@@ -1,30 +1,34 @@
 @page
 @model NBADATA.Pages.CompareModel
+@{
+    ViewData["Title"] = "Comparar Jugadores";
+}
 
-@*Pagina para comparar dos jugadores*@
-<div class="comparison-container">
-    <div class="container-fluid">
-        <div class="comparison-header">
-            <h2 class="text-center mb-4">Comparar Jugadores de la NBA</h2>
+<h1>Comparar jugadores</h1>
 
-            <form method="get" class="row g-2 mb-4 justify-content-center">
-                <div class="col-md-4">
-                    <div class="search-container">
-                        <input class="form-control search-input" name="player1" placeholder="Jugador 1 (nombre o parte)" value="@Model.Player1" autocomplete="off" />
-                        <div class="search-suggestions" id="suggestions1"></div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="search-container">
-                        <input class="form-control search-input" name="player2" placeholder="Jugador 2 (nombre o parte)" value="@Model.Player2" autocomplete="off" />
-                        <div class="search-suggestions" id="suggestions2"></div>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary w-100" type="submit">Comparar</button>
-                </div>
-            </form>
+<form method="get">
+    <div class="row">
+        <div class="col-md-6 position-relative">
+            <label for="player1Input" class="form-label">Jugador 1</label>
+            <input asp-for="Player1"
+                   class="form-control"
+                   id="player1Input"
+                   autocomplete="off" />
+            <div id="player1Suggestions" class="suggestions-list"></div>
         </div>
+
+        <div class="col-md-6 position-relative">
+            <label for="player2Input" class="form-label">Jugador 2</label>
+            <input asp-for="Player2"
+                   class="form-control"
+                   id="player2Input"
+                   autocomplete="off" />
+            <div id="player2Suggestions" class="suggestions-list"></div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Comparar</button>
+</form>
 
     @if (Model.Result1 != null && Model.Result2 != null)
     {
@@ -159,8 +163,6 @@
             </div>
         </div>
     }
-    </div>
-</div>
 
 @functions {
     private bool IsNumericStat(string propName)
@@ -199,6 +201,95 @@
     }
 }
 
+<style>
+    .suggestions-list {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 0 0 4px 4px;
+        max-height: 220px;
+        overflow-y: auto;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: none;
+    }
+
+    .suggestion-item {
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 0.95rem;
+    }
+
+        .suggestion-item:hover {
+            background: #f2f2f2;
+        }
+</style>
+
+
 @section Scripts {
-    <script src="~/js/compare-search.js" asp-append-version="true"></script>
+    <script>
+        function setupAutocomplete(inputId, suggId) {
+            const input = document.getElementById(inputId);
+            const box = document.getElementById(suggId);
+            let timer = null;
+
+            if (!input || !box) return;
+
+            input.addEventListener('input', () => {
+                const q = input.value.trim();
+                clearTimeout(timer);
+
+                if (q.length < 2) {
+                    box.innerHTML = '';
+                    box.style.display = 'none';
+                    return;
+                }
+
+                timer = setTimeout(async () => {
+                    try {
+                        const resp = await fetch(`/api/players/search?query=${encodeURIComponent(q)}`);
+                        if (!resp.ok) return;
+                        const data = await resp.json();
+
+                        if (!Array.isArray(data) || data.length === 0) {
+                            box.innerHTML = '';
+                            box.style.display = 'none';
+                            return;
+                        }
+
+                        box.innerHTML = '';
+                        data.forEach(p => {
+                            const item = document.createElement('div');
+                            item.className = 'suggestion-item';
+                            item.textContent = `${p.fullName} (${p.team})`;
+                            item.addEventListener('click', () => {
+                                input.value = p.fullName; // rellena el input
+                                box.innerHTML = '';
+                                box.style.display = 'none';
+                            });
+                            box.appendChild(item);
+                        });
+
+                        box.style.display = 'block';
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }, 200);
+            });
+
+            // Cerrar cuando haces click fuera
+            document.addEventListener('click', (e) => {
+                if (!box.contains(e.target) && e.target !== input) {
+                    box.innerHTML = '';
+                    box.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupAutocomplete('player1Input', 'player1Suggestions');
+            setupAutocomplete('player2Input', 'player2Suggestions');
+        });
+    </script>
 }
