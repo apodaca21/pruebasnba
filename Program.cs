@@ -1,26 +1,70 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// Program.cs
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using NBADATA.Data;
 using NBADATA.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 1) EF Core con tu provider elegido
 builder.Services.AddDbContext<NBADbContext>(opt =>
-    opt.UseInMemoryDatabase("nba"));
+    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+// 2) Identity (usuarios)
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>(o =>
+{
+o.Password.RequiredLength = 6;
+o.Password.RequireDigit = true;
+o.Password.RequireNonAlphanumeric = false;
+})
+    .AddEntityFrameworkStores<NBADbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(opt =>
+{
+    opt.ExpireTimeSpan = TimeSpan.FromDays(14);
+    opt.SlidingExpiration = true;
+    opt.LoginPath = "/Account/Login";
+    opt.LogoutPath = "/Account/Logout";
+    opt.AccessDeniedPath = "/Account/Login";
+});
+
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
 var app = builder.Build();
 
+// 3) Middleware
+if (!app.Environment.IsDevelopment())
+{
+app.UseExceptionHandler("/Error");
+app.UseHsts();
+}
 
-// Agregamos juadores de ejemplo
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthentication();  
+app.UseAuthorization();   
+
+app.MapRazorPages();
+app.MapControllers();
+
+// 4) Seed opcional (solo si la tabla está vacía)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<NBADbContext>();
+    db.Database.Migrate(); // aplica migraciones en arranque
+
     if (!db.Players.Any())
     {
         db.Players.AddRange(
-            new Player { Id = 1, FullName = "LeBron James", Team = "LAL", Position = "F", HeightCm = 206, WeightKg = 113, BirthDate = new DateTime(1984, 12, 30), Pts = 25.3, Reb = 7.4, Ast = 7.9, Stl = 1.1, Blk = 0.5, Tov = 3.2, FgPct = 0.525, TpPct = 0.367, FtPct = 0.750 },
-            new Player { Id = 2, FullName = "Stephen Curry", Team = "GSW", Position = "G", HeightCm = 188, WeightKg = 84, BirthDate = new DateTime(1988, 3, 14), Pts = 27.3, Reb = 4.5, Ast = 6.2, Stl = 1.0, Blk = 0.4, Tov = 3.1, FgPct = 0.487, TpPct = 0.421, FtPct = 0.915 },
+            new Player { FullName = "LeBron James", Team = "LAL", Position = "F", HeightCm = 206, WeightKg = 113, BirthDate = new DateTime(1984, 12, 30), Pts = 25.3, Reb = 7.4, Ast = 7.9, Stl = 1.1, Blk = 0.5, Tov = 3.2, FgPct = 0.525, TpPct = 0.367, FtPct = 0.750 },
+            new Player { FullName = "Stephen Curry", Team = "GSW", Position = "G", HeightCm = 188, WeightKg = 84, BirthDate = new DateTime(1988, 3, 14), Pts = 27.3, Reb = 4.5, Ast = 6.2, Stl = 1.0, Blk = 0.4, Tov = 3.1, FgPct = 0.487, TpPct = 0.421, FtPct = 0.915 },
             new Player { Id = 3, FullName = "Nikola Jokić", Team = "DEN", Position = "C", HeightCm = 211, WeightKg = 129, BirthDate = new DateTime(1995, 2, 19), Pts = 26.4, Reb = 12.4, Ast = 9.0, Stl = 1.2, Blk = 0.8, Tov = 3.4, FgPct = 0.580, TpPct = 0.370, FtPct = 0.830 },
             new Player { Id = 4, FullName = "Luka Dončić", Team = "DAL", Position = "G", HeightCm = 201, WeightKg = 104, BirthDate = new DateTime(1999, 2, 28), Pts = 28.4, Reb = 8.7, Ast = 8.7, Stl = 1.1, Blk = 0.5, Tov = 4.0, FgPct = 0.459, TpPct = 0.346, FtPct = 0.743 },
             new Player { Id = 5, FullName = "Giannis Antetokounmpo", Team = "MIL", Position = "F", HeightCm = 211, WeightKg = 110, BirthDate = new DateTime(1994, 12, 6), Pts = 31.1, Reb = 11.8, Ast = 5.7, Stl = 0.8, Blk = 0.8, Tov = 3.4, FgPct = 0.553, TpPct = 0.275, FtPct = 0.656 },
@@ -34,16 +78,28 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (!app.Environment.IsDevelopment())
+// 5) Endpoint API para búsqueda de jugadores
+app.MapGet("/api/players/search", async (string? query, NBADbContext db) =>
 {
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
+    if (string.IsNullOrWhiteSpace(query))
+        return Results.Ok(Array.Empty<object>());
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseRouting();
-app.MapRazorPages();
-app.MapControllers();
+    query = query.Trim();
+
+    var matches = await db.Players
+        .Where(p => EF.Functions.Like(p.FullName, $"%{query}%"))
+        .OrderBy(p => p.FullName)
+        .Take(10)
+        .Select(p => new
+        {
+            id = p.Id,
+            fullName = p.FullName,
+            team = p.Team
+        })
+        .ToListAsync();
+
+    return Results.Ok(matches);
+});
+
 
 app.Run();
