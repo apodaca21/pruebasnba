@@ -1,0 +1,32 @@
+﻿@page
+@model NBADATA.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Entrar";
+}
+<h1>Entrar</h1>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Email" class="form-label"></label>
+        <input asp-for="Input.Email" class="form-control" />
+        <span asp-validation-for="Input.Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Password" class="form-label"></label>
+        <input asp-for="Input.Password" class="form-control" />
+        <span asp-validation-for="Input.Password" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="Input.RememberMe" class="form-check-input" />
+        <label asp-for="Input.RememberMe" class="form-check-label">Mantener sesión iniciada</label>
+    </div>
+
+    <input type="hidden" asp-for="ReturnUrl" />
+    <button class="btn btn-primary" type="submit">Entrar</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />
