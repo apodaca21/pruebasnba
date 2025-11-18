@@ -1,13 +1,13 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NBADATA.Models;
 
-namespace NBADATA.Data;
-
-public class NBADbContext : DbContext
+namespace NBADATA.Data
 {
-	public NBADbContext(DbContextOptions<NBADbContext> options) : base(options)
-	{
-	}
+    public class NBADbContext : IdentityDbContext<ApplicationUser>
+    {
+        public NBADbContext(DbContextOptions<NBADbContext> options) : base(options) { }
 
-	public DbSet<Player> Players { get; set; } = null!;
+        public DbSet<Player> Players { get; set; } = null!;
+    }
 }
