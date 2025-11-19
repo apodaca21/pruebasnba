@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using NBADATA.Data;
 using NBADATA.Models;
+using NBADATA.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/Login";
 });
+
+// Registrar el servicio de NBA API
+builder.Services.AddHttpClient<NBAApiService>();
 
 builder.Services.AddRazorPages();
 
@@ -62,5 +66,65 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+
+// Endpoint para buscar jugadores en la API externa
+app.MapGet("/api/nba/search", async (string? query, NBAApiService nbaApi) =>
+{
+    if (string.IsNullOrWhiteSpace(query))
+        return Results.Ok(Array.Empty<object>());
+
+    var players = await nbaApi.SearchPlayersAsync(query);
+    
+    var results = players.Select(p => new
+    {
+        id = p.Id,
+        fullName = p.FullName,
+        team = p.Team.Abbreviation,
+        position = p.Position
+    }).ToList();
+
+    return Results.Ok(results);
+});
+
+// Endpoint para obtener estadísticas de un jugador
+app.MapGet("/api/nba/stats/{playerId}", async (int playerId, NBAApiService nbaApi) =>
+{
+    var stats = await nbaApi.GetPlayerStatsAsync(playerId);
+    
+    if (stats == null)
+        return Results.NotFound();
+
+    return Results.Ok(stats);
+});
+
+// Endpoint de prueba para debugging
+app.MapGet("/api/nba/test", async (string? query, NBAApiService nbaApi) =>
+{
+    if (string.IsNullOrWhiteSpace(query))
+        return Results.Json(new { error = "Query requerido" });
+
+    try
+    {
+        var results = await nbaApi.SearchPlayersAsync(query);
+        return Results.Json(new 
+        { 
+            totalResults = results.Count,
+            query = query,
+            players = results.Select(p => new
+            {
+                id = p.Id,
+                fullName = p.FullName,
+                firstName = p.FirstName,
+                lastName = p.LastName,
+                team = p.Team.Abbreviation,
+                position = p.Position
+            }).ToList()
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message, stack = ex.StackTrace });
+    }
+});
 
 app.Run();

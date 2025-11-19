@@ -248,7 +248,7 @@
 
                 timer = setTimeout(async () => {
                     try {
-                        const resp = await fetch(`/api/players/search?query=${encodeURIComponent(q)}`);
+                        const resp = await fetch(`/api/nba/search?query=${encodeURIComponent(q)}`);
                         if (!resp.ok) return;
                         const data = await resp.json();
 

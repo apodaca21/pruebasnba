@@ -19,6 +19,22 @@
     }
 </form>
 
+@if (!string.IsNullOrWhiteSpace(Model.ApiErrorMessage))
+{
+    <div class="alert alert-warning mb-3">
+        <i class="fas fa-exclamation-triangle"></i> 
+        @Model.ApiErrorMessage
+    </div>
+}
+
+@if (Model.ShowingApiResults && Model.Players.Count > 0)
+{
+    <div class="alert alert-info mb-3">
+        <i class="fas fa-basketball-ball"></i> 
+        <strong>Base de datos oficial NBA:</strong> Mostrando @Model.Players.Count jugador@(Model.Players.Count != 1 ? "es" : "") de la API de balldontlie.io
+    </div>
+}
+
 <form method="post" asp-page-handler="Compare">
     <div class="table-responsive">
         <table class="table table-striped align-middle">
