@@ -35,27 +35,36 @@ namespace NBADATA.Pages
         [BindProperty(SupportsGet = true, Name = "player2")]
         public string? Player2 { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int Season { get; set; } = 2024; // Temporada por defecto
+
         public int[] SelectedIds { get; private set; } = Array.Empty<int>();
         public List<Player> Players { get; private set; } = new();
         public Player? Result1 { get; private set; }
         public Player? Result2 { get; private set; }
         public List<PropertyInfo> Props { get; private set; } = new();
-        public string DebugMsg { get; private set; } = "";
+        public List<int> AvailableSeasons { get; private set; } = new();
         public string? PhotoUrl1 { get; private set; }
         public string? PhotoUrl2 { get; private set; }
 
         public async Task OnGet()
         {
-            SelectedIds = ParseIds(IdsRaw);
-            DebugMsg = $"IdsRaw='{IdsRaw}' -> {SelectedIds.Length} ids: [{string.Join(",", SelectedIds)}]";
-
-            if (SelectedIds.Length > 0)
+            // Obtener temporadas disponibles
+            AvailableSeasons = await _nbaApi.GetAvailableSeasonsAsync();
+            if (!AvailableSeasons.Any())
             {
-                Players = await _db.Set<Player>()
-                                   .Where(p => SelectedIds.Contains(p.Id))
-                                   .ToListAsync();
-                DebugMsg += $" | Players found: {Players.Count}";
+                // Fallback si no se pueden obtener temporadas
+                var currentYear = DateTime.Now.Year;
+                AvailableSeasons = Enumerable.Range(2015, currentYear - 2014).Reverse().ToList();
             }
+
+            // Validar que la temporada seleccionada sea válida
+            if (!AvailableSeasons.Contains(Season))
+            {
+                Season = AvailableSeasons.FirstOrDefault(); // Usar la primera disponible
+            }
+
+            SelectedIds = ParseIds(IdsRaw);
 
             if (!string.IsNullOrWhiteSpace(Player1))
             {
@@ -69,8 +78,6 @@ namespace NBADATA.Pages
                     var searchTerm = words.Length > 1 ? words.Last() : term; // Usar apellido si hay múltiples palabras
                     
                     var apiResults = await _nbaApi.SearchPlayersAsync(searchTerm);
-                    
-                    DebugMsg += $" | Búsqueda '{searchTerm}' devolvió {apiResults.Count} resultados";
                     
                     // 1. Primero intentar coincidencia exacta del nombre completo
                     var apiPlayer = apiResults.FirstOrDefault(p => 
@@ -95,17 +102,11 @@ namespace NBADATA.Pages
                     
                     if (apiPlayer != null)
                     {
-                        DebugMsg += $" | ✓ Encontrado: {apiPlayer.FullName}";
-                        Result1 = await ConvertToPlayerWithStatsAsync(apiPlayer);
-                    }
-                    else
-                    {
-                        DebugMsg += " | ✗ No encontrado";
+                        Result1 = await ConvertToPlayerWithStatsAsync(apiPlayer, Season);
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    DebugMsg += $" | Error API: {ex.Message}";
                     // Si falla la API, buscar en DB local
                     Result1 = await _db.Players
                                        .Where(p => EF.Functions.Like(p.FullName, $"%{term}%"))
@@ -121,8 +122,6 @@ namespace NBADATA.Pages
 
                 if (Result1 != null && !Players.Any(p => p.Id == Result1.Id))
                     Players.Add(Result1);
-
-                DebugMsg += $" | Player1='{term}' -> {(Result1 != null ? Result1.FullName : "(not found)")}";
             }
 
             if (!string.IsNullOrWhiteSpace(Player2))
@@ -161,7 +160,7 @@ namespace NBADATA.Pages
                     
                     if (apiPlayer != null)
                     {
-                        Result2 = await ConvertToPlayerWithStatsAsync(apiPlayer);
+                        Result2 = await ConvertToPlayerWithStatsAsync(apiPlayer, Season);
                     }
                 }
                 catch
@@ -181,21 +180,49 @@ namespace NBADATA.Pages
 
                 if (Result2 != null && !Players.Any(p => p.Id == Result2.Id))
                     Players.Add(Result2);
-
-                DebugMsg += $" | Player2='{term}' -> {(Result2 != null ? Result2.FullName : "(not found)")}";
             }
 
+            // Filtrar propiedades para la comparación (excluir BirthDate y otras no relevantes)
             var t = typeof(Player);
             Props = t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                      .Where(p =>
                         IsSimple(p.PropertyType) &&
-                        p.Name != "Id")
-                     .OrderBy(p => p.Name)
+                        p.Name != "Id" &&
+                        p.Name != "BirthDate") // Excluir fecha de nacimiento
+                     .OrderBy(p => GetPropertyOrder(p.Name))
                      .ToList();
             DeterminePhotoUrls();
         }
 
-        private async Task<Player> ConvertToPlayerWithStatsAsync(PlayerSearchResult ap)
+        /// <summary>
+        /// Ordena las propiedades para mostrar primero las estadísticas relevantes
+        /// </summary>
+        private int GetPropertyOrder(string propertyName)
+        {
+            return propertyName switch
+            {
+                "FullName" => 1,
+                "Team" => 2,
+                "Position" => 3,
+                "Pts" => 4,
+                "Reb" => 5,
+                "Ast" => 6,
+                "Stl" => 7,
+                "Blk" => 8,
+                "Tov" => 9,
+                "FgPct" => 10,
+                "TpPct" => 11,
+                "FtPct" => 12,
+                "HeightCm" => 13,
+                "WeightKg" => 14,
+                _ => 99
+            };
+        }
+
+        /// <summary>
+        /// Convierte un resultado de la API a Player con estadísticas de la temporada especificada
+        /// </summary>
+        private async Task<Player> ConvertToPlayerWithStatsAsync(PlayerSearchResult ap, int season)
         {
             var player = new Player
             {
@@ -205,7 +232,7 @@ namespace NBADATA.Pages
                 Position = ap.Position,
                 HeightCm = ParseHeight(ap.Height) ?? 0,
                 WeightKg = ParseWeight(ap.Weight) ?? 0,
-                BirthDate = DateTime.MinValue,
+                BirthDate = DateTime.MinValue, // No se muestra en la comparación
                 Pts = 0,
                 Reb = 0,
                 Ast = 0,
@@ -217,22 +244,10 @@ namespace NBADATA.Pages
                 FtPct = 0
             };
 
-            // Intentar obtener estadísticas de la API (probar múltiples temporadas)
-            PlayerAverageStats? stats = null;
+            // Obtener estadísticas de la temporada especificada
             try
             {
-                // Intentar últimas 3 temporadas
-                var seasons = new[] { 2024, 2023, 2022 };
-                
-                foreach (var season in seasons)
-                {
-                    stats = await _nbaApi.GetPlayerStatsAsync(ap.Id, season);
-                    if (stats != null && stats.GamesPlayed > 0)
-                    {
-                        DebugMsg += $" | Stats de temporada {season} ({stats.GamesPlayed} juegos)";
-                        break;
-                    }
-                }
+                var stats = await _nbaApi.GetPlayerStatsAsync(ap.Id, season);
                 
                 if (stats != null && stats.GamesPlayed > 0)
                 {
@@ -246,14 +261,10 @@ namespace NBADATA.Pages
                     player.TpPct = stats.Fg3Pct;
                     player.FtPct = stats.FtPct;
                 }
-                else
-                {
-                    DebugMsg += $" | {ap.FullName}: Sin stats en 2024/2023/2022";
-                }
             }
-            catch (Exception ex)
+            catch
             {
-                DebugMsg += $" | Error stats {ap.FullName}: {ex.Message}";
+                // Si falla obtener estadísticas, dejar en 0
             }
 
             return player;

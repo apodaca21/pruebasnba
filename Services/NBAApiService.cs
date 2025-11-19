@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace NBADATA.Services
 {
@@ -7,22 +8,30 @@ namespace NBADATA.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<NBAApiService> _logger;
+        private readonly IMemoryCache _cache;
 
-        public NBAApiService(HttpClient httpClient, ILogger<NBAApiService> logger)
+        public NBAApiService(HttpClient httpClient, ILogger<NBAApiService> logger, IMemoryCache cache)
         {
             _httpClient = httpClient;
             _logger = logger;
-            _httpClient.BaseAddress = new Uri("https://api.balldontlie.io/v1/");
-            _httpClient.DefaultRequestHeaders.Add("Authorization", "05ea5d28-7031-4b22-b3d2-b826840e0529");
+            _cache = cache;
         }
 
         public async Task<List<PlayerSearchResult>> SearchPlayersAsync(string searchTerm)
         {
+            // Optimización: Usar caché para búsquedas recientes (5 minutos)
+            var cacheKey = $"search_players_{searchTerm.ToLowerInvariant()}";
+            if (_cache.TryGetValue(cacheKey, out List<PlayerSearchResult>? cachedResults))
+            {
+                _logger.LogInformation("Resultados de búsqueda obtenidos del caché para: {SearchTerm}", searchTerm);
+                return cachedResults ?? new List<PlayerSearchResult>();
+            }
+
             try
             {
                 var allPlayers = new List<PlayerSearchResult>();
                 int? cursor = null;
-                int maxPages = 3; // Buscar en 3 páginas (75 jugadores)
+                int maxPages = 2; // Reducido a 2 páginas (50 jugadores) para mejorar velocidad
                 int currentPage = 0;
 
                 do
@@ -32,7 +41,12 @@ namespace NBADATA.Services
                         : $"players?search={Uri.EscapeDataString(searchTerm)}&per_page=25";
                     
                     var response = await _httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Error en API: {StatusCode} para búsqueda: {SearchTerm}", response.StatusCode, searchTerm);
+                        break;
+                    }
 
                     var json = await response.Content.ReadAsStringAsync();
                     var result = JsonSerializer.Deserialize<PlayersResponseWithMeta>(json, new JsonSerializerOptions
@@ -49,25 +63,42 @@ namespace NBADATA.Services
 
                 } while (cursor.HasValue && currentPage < maxPages);
 
+                // Guardar en caché por 5 minutos
+                _cache.Set(cacheKey, allPlayers, TimeSpan.FromMinutes(5));
+                
                 return allPlayers;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching players from API");
+                _logger.LogError(ex, "Error searching players from API: {SearchTerm}", searchTerm);
                 return new List<PlayerSearchResult>();
             }
         }
 
-        public async Task<List<PlayerSearchResult>> GetAllPlayersAsync(int perPage = 100, int maxPages = 5)
+        public async Task<List<PlayerSearchResult>> GetAllPlayersAsync(int perPage = 100, int maxPages = 2)
         {
+            // Optimización: Cachear lista completa de jugadores (10 minutos)
+            var cacheKey = $"all_players_{perPage}_{maxPages}";
+            if (_cache.TryGetValue(cacheKey, out List<PlayerSearchResult>? cachedResults))
+            {
+                _logger.LogInformation("Lista completa de jugadores obtenida del caché");
+                return cachedResults ?? new List<PlayerSearchResult>();
+            }
+
             var allPlayers = new List<PlayerSearchResult>();
             
             try
             {
+                // Reducir maxPages a 2 por defecto para mejorar velocidad
                 for (int page = 1; page <= maxPages; page++)
                 {
                     var response = await _httpClient.GetAsync($"players?per_page={perPage}&page={page}");
-                    response.EnsureSuccessStatusCode();
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Error en API al obtener jugadores: {StatusCode}", response.StatusCode);
+                        break;
+                    }
 
                     var json = await response.Content.ReadAsStringAsync();
                     var result = JsonSerializer.Deserialize<PlayersResponse>(json, new JsonSerializerOptions
@@ -84,6 +115,9 @@ namespace NBADATA.Services
                     if (result.Data.Count < perPage)
                         break;
                 }
+
+                // Guardar en caché por 10 minutos
+                _cache.Set(cacheKey, allPlayers, TimeSpan.FromMinutes(10));
             }
             catch (Exception ex)
             {
@@ -93,13 +127,56 @@ namespace NBADATA.Services
             return allPlayers;
         }
 
+        /// <summary>
+        /// Obtiene las temporadas disponibles de la API.
+        /// La API de balldontlie.io normalmente tiene datos desde 1979 hasta la temporada actual.
+        /// </summary>
+        public Task<List<int>> GetAvailableSeasonsAsync()
+        {
+            var cacheKey = "available_seasons";
+            if (_cache.TryGetValue(cacheKey, out List<int>? cachedSeasons))
+            {
+                return Task.FromResult(cachedSeasons ?? new List<int>());
+            }
+
+            // La API de balldontlie.io tiene datos desde 1979 hasta la temporada actual
+            // Generamos una lista de temporadas recientes (últimos 10 años)
+            var currentYear = DateTime.Now.Year;
+            var seasons = new List<int>();
+            
+            // Incluir temporadas desde 2015 hasta la actual
+            for (int year = 2015; year <= currentYear; year++)
+            {
+                seasons.Add(year);
+            }
+
+            // Cachear por 1 hora (las temporadas no cambian frecuentemente)
+            _cache.Set(cacheKey, seasons, TimeSpan.FromHours(1));
+            
+            return Task.FromResult<List<int>>(seasons);
+        }
+
         public async Task<PlayerAverageStats?> GetPlayerStatsAsync(int playerId, int season = 2024)
         {
+            // Optimización: Cachear estadísticas de jugadores (15 minutos)
+            var cacheKey = $"player_stats_{playerId}_{season}";
+            if (_cache.TryGetValue(cacheKey, out PlayerAverageStats? cachedStats))
+            {
+                _logger.LogInformation("Estadísticas obtenidas del caché para jugador {PlayerId}, temporada {Season}", playerId, season);
+                return cachedStats;
+            }
+
             try
             {
                 // Obtener estadísticas de juegos individuales del jugador para la temporada
-                var response = await _httpClient.GetAsync($"stats?seasons[]={season}&player_ids[]={playerId}&per_page=100");
-                response.EnsureSuccessStatusCode();
+                // Reducir per_page a 50 para mejorar velocidad (suficiente para calcular promedios)
+                var response = await _httpClient.GetAsync($"stats?seasons[]={season}&player_ids[]={playerId}&per_page=50");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Error en API al obtener estadísticas: {StatusCode} para jugador {PlayerId}", response.StatusCode, playerId);
+                    return null;
+                }
 
                 var json = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<GameStatsResponse>(json, new JsonSerializerOptions
@@ -114,7 +191,7 @@ namespace NBADATA.Services
                 var stats = result.Data;
                 var gamesPlayed = stats.Count;
 
-                return new PlayerAverageStats
+                var averageStats = new PlayerAverageStats
                 {
                     PlayerId = playerId,
                     Season = season,
@@ -129,10 +206,15 @@ namespace NBADATA.Services
                     Fg3Pct = stats.Where(s => s.Fg3a > 0).Average(s => (double)s.Fg3m / s.Fg3a),
                     FtPct = stats.Where(s => s.Fta > 0).Average(s => (double)s.Ftm / s.Fta)
                 };
+
+                // Guardar en caché por 15 minutos
+                _cache.Set(cacheKey, averageStats, TimeSpan.FromMinutes(15));
+                
+                return averageStats;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting player stats from API");
+                _logger.LogError(ex, "Error getting player stats from API para jugador {PlayerId}", playerId);
                 return null;
             }
         }

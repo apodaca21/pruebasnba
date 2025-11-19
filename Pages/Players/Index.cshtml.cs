@@ -33,40 +33,104 @@ public class IndexModel : PageModel
             // Si hay una búsqueda específica
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var apiPlayers = await _nbaApi.SearchPlayersAsync(q);
+                var searchTerm = q.Trim();
+                var apiPlayers = await _nbaApi.SearchPlayersAsync(searchTerm);
                 
                 if (apiPlayers.Any())
                 {
                     // Convertir los resultados de la API al modelo Player
-                    Players = apiPlayers.Select(ap => ConvertToPlayer(ap)).ToList();
+                    // Obtener estadísticas para los jugadores encontrados
+                    Players = new List<Player>();
+                    foreach (var apiPlayer in apiPlayers.Take(50)) // Limitar a 50 para no sobrecargar
+                    {
+                        var player = await ConvertToPlayerWithStatsAsync(apiPlayer);
+                        Players.Add(player);
+                    }
                 }
                 else
                 {
-                    ApiErrorMessage = "No se encontraron jugadores con ese criterio.";
+                    ApiErrorMessage = $"No se encontraron jugadores con el criterio '{searchTerm}'. Intenta con otro nombre.";
+                    // Fallback a base de datos local si existe
+                    Players = await _db.Players
+                        .Where(p => p.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(p => p.FullName)
+                        .ToListAsync();
+                    if (Players.Any())
+                    {
+                        ShowingApiResults = false;
+                        ApiErrorMessage = "No se encontraron resultados en la API. Mostrando jugadores de la base de datos local.";
+                    }
                 }
             }
             else
             {
-                // Sin búsqueda: obtener todos los jugadores de la API (primeras 2 páginas = ~200 jugadores para que cargue más rápido)
-                var apiPlayers = await _nbaApi.GetAllPlayersAsync(100, 2);
+                // Sin búsqueda: obtener primera página de jugadores de la API (25 jugadores)
+                var apiPlayers = await _nbaApi.GetAllPlayersAsync(perPage: 25, maxPages: 1);
                 
                 if (apiPlayers.Any())
                 {
+                    // Convertir sin estadísticas para carga más rápida (se pueden cargar después)
                     Players = apiPlayers.Select(ap => ConvertToPlayer(ap)).ToList();
                 }
                 else
                 {
                     ApiErrorMessage = "No se pudieron cargar jugadores de la API.";
+                    // Fallback a base de datos local
+                    Players = await _db.Players.OrderBy(p => p.FullName).Take(25).ToListAsync();
+                    if (Players.Any())
+                    {
+                        ShowingApiResults = false;
+                        ApiErrorMessage = "Error conectando con la API. Mostrando jugadores de la base de datos local.";
+                    }
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
             // Si falla la API, mostrar jugadores locales como fallback
             ShowingApiResults = false;
             ApiErrorMessage = "Error conectando con la API de NBA. Mostrando jugadores locales.";
             Players = await _db.Players.OrderBy(p => p.FullName).ToListAsync();
         }
+    }
+
+    /// <summary>
+    /// Convierte un resultado de la API a Player con estadísticas
+    /// </summary>
+    private async Task<Player> ConvertToPlayerWithStatsAsync(PlayerSearchResult ap)
+    {
+        var player = ConvertToPlayer(ap);
+        
+        // Intentar obtener estadísticas de la temporada más reciente
+        try
+        {
+            var currentYear = DateTime.Now.Year;
+            var seasons = new[] { currentYear, currentYear - 1, currentYear - 2 };
+            
+            foreach (var season in seasons)
+            {
+                var stats = await _nbaApi.GetPlayerStatsAsync(ap.Id, season);
+                if (stats != null && stats.GamesPlayed > 0)
+                {
+                    player.Pts = stats.Pts;
+                    player.Reb = stats.Reb;
+                    player.Ast = stats.Ast;
+                    player.Stl = stats.Stl;
+                    player.Blk = stats.Blk;
+                    player.Tov = stats.Turnover;
+                    player.FgPct = stats.FgPct;
+                    player.TpPct = stats.Fg3Pct;
+                    player.FtPct = stats.FtPct;
+                    break; // Usar la primera temporada con datos
+                }
+            }
+        }
+        catch
+        {
+            // Si falla obtener estadísticas, dejar en 0
+        }
+        
+        return player;
     }
 
     private Player ConvertToPlayer(PlayerSearchResult ap)
