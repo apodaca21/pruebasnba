@@ -1,241 +1,116 @@
 @page
 @model NBADATA.Pages.Players.IndexModel
+
 @{
     ViewData["Title"] = "Jugadores NBA";
 }
 
-@section Styles {
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-}
+<div class="container mt-4">
 
-<div class="players-page">
-    <div class="page-header mb-4">
-        <h1 class="page-title">
-            <i class="fas fa-users"></i> Jugadores NBA
+    <!-- Título / Hero -->
+    <div class="mb-4">
+        <h1 class="display-5 fw-bold">
+            <span class="me-2">👥</span> Jugadores NBA
         </h1>
-        <p class="page-subtitle">Explora y busca jugadores de la NBA con datos actualizados</p>
+        <p class="text-muted mb-0">
+            Explora y busca jugadores de la NBA con datos actualizados desde la API de balldontlie.io
+        </p>
     </div>
 
-    <form method="get" class="search-form mb-4">
-        <div class="row g-2">
-            <div class="col-md-10">
-                <div class="input-group">
-                    <span class="input-group-text">
-                        <i class="fas fa-search"></i>
-                    </span>
-                    <input class="form-control" 
-                           type="text" 
-                           name="q" 
-                           value="@Model.q" 
-                           placeholder="Buscar por nombre o equipo..." 
-                           id="searchInput" />
-                </div>
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-primary w-100" type="submit" id="searchBtn">
-                    <i class="fas fa-search"></i> Buscar
-                </button>
-            </div>
+    <!-- Buscador -->
+    <form method="get" class="mb-3">
+        <div class="input-group input-group-lg">
+            <input asp-for="q"
+                   class="form-control"
+                   placeholder="Buscar por nombre o equipo..." />
+            <button class="btn btn-orange" type="submit">
+                🔍 Buscar
+            </button>
         </div>
-        @if (!string.IsNullOrWhiteSpace(Model.error))
-        {
-            <div class="alert alert-danger mt-3">
-                <i class="fas fa-exclamation-circle"></i> @Model.error
-            </div>
-        }
     </form>
 
-    <!-- Indicador de carga -->
-    <div id="loadingIndicator" class="text-center py-5" style="display: none;">
-        <div class="loading-spinner mx-auto mb-3" style="width: 50px; height: 50px; border-width: 4px;"></div>
-        <p class="text-muted">Cargando datos de la API...</p>
+    @if (!string.IsNullOrWhiteSpace(Model.error))
+    {
+    <div class="alert alert-danger">
+        @Model.error
+    </div>
+    }
+
+    @if (Model.Players != null && Model.Players.Any())
+    {
+        <!-- Aviso de fuente de datos -->
+    <div class="alert alert-primary mt-3">
+        <strong>📂 Base de datos oficial NBA:</strong>
+        Mostrando @Model.Players.Count jugadores de la API de balldontlie.io
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.ApiErrorMessage))
-    {
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle"></i> 
-            <strong>Advertencia:</strong> @Model.ApiErrorMessage
+ <!-- Tabla de jugadores -->
+    <div class="card mt-3 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <strong>Lista de Jugadores</strong>
         </div>
-    }
 
-    @if (Model.ShowingApiResults && Model.Players.Count > 0)
-    {
-        <div class="alert alert-info">
-            <i class="fas fa-basketball-ball"></i> 
-            <strong>Base de datos oficial NBA:</strong> Mostrando @Model.Players.Count jugador@(Model.Players.Count != 1 ? "es" : "") de la API de balldontlie.io
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col" style="width:40px;" class="text-center">
+                            <input type="checkbox"
+                                   onclick="toggleAll(this)" />
+                        </th>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Equipo</th>
+                        <th scope="col">Posición</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Players)
+                        {
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox"
+                                   name="selectedPlayers"
+                                   value="@p.Id"
+                                   form="compare-form" />
+                        </td>
+                        <td>@p.FullName</td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                @p.Team
+                            </span>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(p.Position) ? "-" : p.Position)</td>
+                    </tr>
+                        }
+                </tbody>
+            </table>
         </div>
-    }
+    </div>
 
-    @if (Model.Players.Count > 0)
-    {
-        <form method="post" asp-page-handler="Compare" id="compareForm">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list"></i> Lista de Jugadores
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th style="width: 50px;">
-                                        <input type="checkbox" id="selectAll" title="Seleccionar todos" />
-                                    </th>
-                                    <th>Nombre</th>
-                                    <th>Equipo</th>
-                                    <th>Posición</th>
-                                    <th class="text-center">PTS</th>
-                                    <th class="text-center">REB</th>
-                                    <th class="text-center">AST</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var p in Model.Players)
-                                {
-                                    <tr>
-                                        <td>
-                                            <input type="checkbox" name="selected" value="@p.Id" class="player-checkbox" />
-                                        </td>
-                                        <td>
-                                            <strong>@p.FullName</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary">@p.Team</span>
-                                        </td>
-                                        <td>@p.Position</td>
-                                        <td class="text-center">
-                                            @if (p.Pts > 0)
-                                            {
-                                                <span class="badge bg-primary">@p.Pts.ToString("0.0")</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td class="text-center">
-                                            @if (p.Reb > 0)
-                                            {
-                                                <span class="badge bg-info">@p.Reb.ToString("0.0")</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td class="text-center">
-                                            @if (p.Ast > 0)
-                                            {
-                                                <span class="badge bg-success">@p.Ast.ToString("0.0")</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <span id="selectedCount" class="text-muted">0 jugadores seleccionados</span>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <input type="hidden" name="mode" value="stats" />
-                            <button class="btn btn-primary" type="submit" onclick="this.form.mode.value='stats'" id="compareStatsBtn" disabled>
-                                <i class="fas fa-balance-scale"></i> Comparar Estadísticas
-                            </button>
-                            <button class="btn btn-outline-secondary" type="submit" onclick="this.form.mode.value='profile'" id="compareProfileBtn" disabled>
-                                <i class="fas fa-user"></i> Comparar Perfil
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-    }
-    else if (!string.IsNullOrWhiteSpace(Model.q))
-    {
-        <div class="alert alert-info text-center">
-            <i class="fas fa-info-circle"></i>
-            <p class="mb-0">No se encontraron jugadores con el criterio de búsqueda "<strong>@Model.q</strong>"</p>
-        </div>
+ <!-- Botón para comparar seleccionados -->
+    <form id="compare-form"
+          asp-page="/Compare/Index"
+          method="get"
+          class="mt-3">
+        <button type="submit" class="btn btn-warning">
+            🔁 Comparar jugadores seleccionados
+        </button>
+    </form>
     }
     else
     {
-        <div class="alert alert-info text-center">
-            <i class="fas fa-info-circle"></i>
-            <p class="mb-0">Ingresa un término de búsqueda para encontrar jugadores</p>
-        </div>
+    <div class="alert alert-warning mt-4">
+        No se encontraron jugadores. Intenta con otro nombre o equipo.
+    </div>
     }
 </div>
 
 @section Scripts {
     <script>
-        // Manejo de selección de jugadores
-        document.addEventListener('DOMContentLoaded', function() {
-            const selectAll = document.getElementById('selectAll');
-            const checkboxes = document.querySelectorAll('.player-checkbox');
-            const compareStatsBtn = document.getElementById('compareStatsBtn');
-            const compareProfileBtn = document.getElementById('compareProfileBtn');
-            const selectedCount = document.getElementById('selectedCount');
-            const form = document.getElementById('compareForm');
-
-            function updateSelection() {
-                const selected = Array.from(checkboxes).filter(cb => cb.checked);
-                const count = selected.length;
-                
-                selectedCount.textContent = count + ' jugador' + (count !== 1 ? 'es' : '') + ' seleccionado' + (count !== 1 ? 's' : '');
-                
-                const hasTwoSelected = count === 2;
-                compareStatsBtn.disabled = !hasTwoSelected;
-                compareProfileBtn.disabled = !hasTwoSelected;
-                
-                if (selectAll) {
-                    selectAll.checked = count === checkboxes.length && count > 0;
-                    selectAll.indeterminate = count > 0 && count < checkboxes.length;
-                }
-            }
-
-            if (selectAll) {
-                selectAll.addEventListener('change', function() {
-                    checkboxes.forEach(cb => cb.checked = this.checked);
-                    updateSelection();
-                });
-            }
-
-            checkboxes.forEach(cb => {
-                cb.addEventListener('change', updateSelection);
-            });
-
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    const selected = Array.from(checkboxes).filter(cb => cb.checked);
-                    if (selected.length !== 2) {
-                        e.preventDefault();
-                        alert('Por favor selecciona exactamente 2 jugadores para comparar');
-                        return false;
-                    }
-                });
-            }
-
-            // Mostrar indicador de carga al enviar búsqueda
-            const searchForm = document.querySelector('.search-form');
-            if (searchForm) {
-                searchForm.addEventListener('submit', function() {
-                    const loadingIndicator = document.getElementById('loadingIndicator');
-                    if (loadingIndicator) {
-                        loadingIndicator.style.display = 'block';
-                    }
-                });
-            }
-        });
+        // Marcar / desmarcar todos los checkboxes de la tabla
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('input[name="selectedPlayers"]');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
     </script>
 }
