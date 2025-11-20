@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using NBADATA.Data;
 using NBADATA.Models;
 using NBADATA.Services;
@@ -11,11 +13,13 @@ public class IndexModel : PageModel
 {
     private readonly NBADbContext _db;
     private readonly NBAApiService _nbaApi;
-    
-    public IndexModel(NBADbContext db, NBAApiService nbaApi)
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public IndexModel(NBADbContext db, NBAApiService nbaApi, UserManager<ApplicationUser> userManager)
     {
         _db = db;
         _nbaApi = nbaApi;
+        _userManager = userManager;
     }
 
     public List<Player> Players { get; set; } = new();
@@ -23,6 +27,10 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public string? error { get; set; }
     public bool ShowingApiResults { get; set; } = false;
     public string? ApiErrorMessage { get; set; }
+
+    // IDs de jugadores que el usuario ya marco como favoritos
+    public HashSet<int> FavoriteIds { get; set; } = new();
+
 
     public async Task OnGetAsync()
     {
@@ -96,7 +104,55 @@ public class IndexModel : PageModel
             ApiErrorMessage = "Error conectando con la API de NBA. Mostrando jugadores locales.";
             Players = await _db.Players.OrderBy(p => p.FullName).ToListAsync();
         }
+
+        var user = HttpContext.User.Identity?.IsAuthenticated == true
+        ? await _userManager.GetUserAsync(User)
+        : null;
+
+        if (user != null)
+        {
+            FavoriteIds = _db.FavoritePlayers
+                .Where(f => f.UserId == user.Id)
+                .Select(f => f.PlayerId)
+                .ToHashSet();
+        }
     }
+
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OnPostToggleFavoriteAsync(
+        int playerId, string fullName, string team, string position, string? q)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user == null)
+            return Redirect("/Account/Login");
+
+        var existing = await _db.FavoritePlayers
+            .FirstOrDefaultAsync(f => f.UserId == user.Id && f.PlayerId == playerId);
+
+        if (existing != null)
+        {
+            _db.FavoritePlayers.Remove(existing);
+        }
+        else
+        {
+            var fav = new FavoritePlayer
+            {
+                UserId = user.Id,
+                PlayerId = playerId,
+                PlayerName = fullName,
+                Team = team,
+                Position = position
+            };
+
+            _db.FavoritePlayers.Add(fav);
+        }
+
+        await _db.SaveChangesAsync();
+
+        return RedirectToPage(new { q });
+    }
+
 
     /// <summary>
     /// Convierte un resultado de la API a Player con estadísticas

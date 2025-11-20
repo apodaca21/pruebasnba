@@ -87,6 +87,28 @@
                         @foreach (var p in Model.Players)
                             {
                         <tr>
+                                    <td>
+                                        <form method="post" asp-page-handler="ToggleFavorite">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="playerId" value="@p.Id" />
+                                            <input type="hidden" name="fullName" value="@p.FullName" />
+                                            <input type="hidden" name="team" value="@p.Team" />
+                                            <input type="hidden" name="position" value="@p.Position" />
+                                            <input type="hidden" name="q" value="@Model.q" />
+
+                                            <button type="submit" class="btn btn-link p-0" title="Agregar/Quitar favorito">
+                                                @if (Model.FavoriteIds.Contains(p.Id))
+                                                {
+                                                    <span style="font-size:1.4rem; color:gold;">⭐</span>
+                                                }
+                                                else
+                                                {
+                                                    <span style="font-size:1.4rem;">☆</span>
+                                                }
+                                            </button>
+                                        </form>
+                                    </td>
+
                             <td>
                                 <strong>@p.FullName</strong>
                             </td>
