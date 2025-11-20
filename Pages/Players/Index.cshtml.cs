@@ -118,7 +118,6 @@ public class IndexModel : PageModel
         }
     }
 
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> OnPostToggleFavoriteAsync(
         int playerId, string fullName, string team, string position, string? q)
     {
