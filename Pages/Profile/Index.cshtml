@@ -1,0 +1,23 @@
+﻿@page
+@model NBADATA.Pages.Profile.IndexModel
+@{
+    ViewData["Title"] = "Mi Perfil";
+}
+
+<h2>Mis Jugadores Favoritos</h2>
+
+@if (!Model.Favorites.Any())
+{
+    <p>No has añadido jugadores a favoritos.</p>
+}
+else
+{
+    <ul>
+        @foreach (var f in Model.Favorites)
+        {
+            <li>
+                <strong>@f.PlayerName</strong> — @f.Team (@f.Position)
+            </li>
+        }
+    </ul>
+}
