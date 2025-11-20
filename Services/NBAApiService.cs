@@ -30,43 +30,66 @@ namespace NBADATA.Services
             try
             {
                 var allPlayers = new List<PlayerSearchResult>();
-                int? cursor = null;
-                int maxPages = 2; // Reducido a 2 páginas (50 jugadores) para mejorar velocidad
-                int currentPage = 0;
-
-                do
+                
+                // Si el término de búsqueda tiene espacios, buscar por cada palabra también
+                var searchTerms = new List<string> { searchTerm };
+                
+                // Si hay espacio, agregar búsquedas por palabras individuales
+                if (searchTerm.Contains(' '))
                 {
-                    var url = cursor.HasValue 
-                        ? $"players?search={Uri.EscapeDataString(searchTerm)}&cursor={cursor}&per_page=25"
-                        : $"players?search={Uri.EscapeDataString(searchTerm)}&per_page=25";
-                    
-                    var response = await _httpClient.GetAsync(url);
-                    
-                    if (!response.IsSuccessStatusCode)
+                    var words = searchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    searchTerms.AddRange(words);
+                }
+
+                // Realizar búsqueda para cada término
+                foreach (var term in searchTerms.Distinct())
+                {
+                    int? cursor = null;
+                    int maxPages = 2;
+                    int currentPage = 0;
+
+                    do
                     {
-                        _logger.LogWarning("Error en API: {StatusCode} para búsqueda: {SearchTerm}", response.StatusCode, searchTerm);
-                        break;
-                    }
+                        var url = cursor.HasValue 
+                            ? $"players?search={Uri.EscapeDataString(term)}&cursor={cursor}&per_page=25"
+                            : $"players?search={Uri.EscapeDataString(term)}&per_page=25";
+                        
+                        var response = await _httpClient.GetAsync(url);
+                        
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            _logger.LogWarning("Error en API: {StatusCode} para búsqueda: {SearchTerm}", response.StatusCode, term);
+                            break;
+                        }
 
-                    var json = await response.Content.ReadAsStringAsync();
-                    var result = JsonSerializer.Deserialize<PlayersResponseWithMeta>(json, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                        var json = await response.Content.ReadAsStringAsync();
+                        var result = JsonSerializer.Deserialize<PlayersResponseWithMeta>(json, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
 
-                    if (result?.Data == null || !result.Data.Any())
-                        break;
+                        if (result?.Data == null || !result.Data.Any())
+                            break;
 
-                    allPlayers.AddRange(result.Data);
-                    cursor = result.Meta?.NextCursor;
-                    currentPage++;
+                        allPlayers.AddRange(result.Data);
+                        cursor = result.Meta?.NextCursor;
+                        currentPage++;
 
-                } while (cursor.HasValue && currentPage < maxPages);
+                    } while (cursor.HasValue && currentPage < maxPages);
+                }
+
+                // Eliminar duplicados por ID y filtrar por el término de búsqueda original
+                var uniquePlayers = allPlayers
+                    .GroupBy(p => p.Id)
+                    .Select(g => g.First())
+                    .Where(p => p.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(p => p.FullName)
+                    .ToList();
 
                 // Guardar en caché por 5 minutos
-                _cache.Set(cacheKey, allPlayers, TimeSpan.FromMinutes(5));
+                _cache.Set(cacheKey, uniquePlayers, TimeSpan.FromMinutes(5));
                 
-                return allPlayers;
+                return uniquePlayers;
             }
             catch (Exception ex)
             {
