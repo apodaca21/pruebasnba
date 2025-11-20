@@ -1,0 +1,174 @@
+@page
+@model NBADATA.Pages.Players.IndexModel
+@{
+    ViewData["Title"] = "Jugadores NBA";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+}
+
+<div class="players-page">
+    <div class="page-header mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-users"></i> Jugadores NBA
+        </h1>
+        <p class="page-subtitle">Explora y busca jugadores de la NBA con datos actualizados</p>
+    </div>
+
+    <!-- Barra de búsqueda -->
+    <form method="get" class="search-form mb-4">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input class="form-control"
+                           type="text"
+                           name="q"
+                           value="@Model.q"
+                           placeholder="Buscar por nombre..."
+                           id="searchInput" />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" type="submit" id="searchBtn">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.error))
+        {
+        <div class="alert alert-danger mt-3">
+            <i class="fas fa-exclamation-circle"></i> @Model.error
+        </div>
+        }
+    </form>
+
+    <!-- Indicador de carga -->
+    <div id="loadingIndicator" class="text-center py-5" style="display: none;">
+        <div class="loading-spinner mx-auto mb-3" style="width: 50px; height: 50px; border-width: 4px;"></div>
+        <p class="text-muted mb-0">
+            <i class="fas fa-basketball-ball fa-spin"></i> Cargando jugadores desde la API...
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ApiErrorMessage))
+    {
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Advertencia:</strong> @Model.ApiErrorMessage
+    </div>
+    }
+
+    @if (Model.ShowingApiResults && Model.Players.Count > 0)
+    {
+    <div class="alert alert-info">
+        <i class="fas fa-basketball-ball"></i>
+        <strong>Base de datos oficial NBA:</strong> Mostrando @Model.Players.Count jugador@(Model.Players.Count != 1 ? "es" : "") de la API de balldontlie.io
+    </div>
+    }
+
+    @if (Model.Players.Count > 0)
+    {
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> Lista de Jugadores
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Equipo</th>
+                            <th>Posición</th>
+                            <th class="text-center">PTS</th>
+                            <th class="text-center">REB</th>
+                            <th class="text-center">AST</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Players)
+                            {
+                        <tr>
+                            <td>
+                                <strong>@p.FullName</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@p.Team</span>
+                            </td>
+                            <td>@p.Position</td>
+                            <td class="text-center">
+                                @if (p.Pts > 0)
+                                        {
+                                <span class="badge bg-primary">@p.Pts.ToString("0.0")</span>
+                                        }
+                                        else
+                                        {
+                                <span class="text-muted">-</span>
+                                        }
+                            </td>
+                            <td class="text-center">
+                                @if (p.Reb > 0)
+                                        {
+                                <span class="badge bg-info">@p.Reb.ToString("0.0")</span>
+                                        }
+                                        else
+                                        {
+                                <span class="text-muted">-</span>
+                                        }
+                            </td>
+                            <td class="text-center">
+                                @if (p.Ast > 0)
+                                        {
+                                <span class="badge bg-success">@p.Ast.ToString("0.0")</span>
+                                        }
+                                        else
+                                        {
+                                <span class="text-muted">-</span>
+                                        }
+                            </td>
+                        </tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Model.q))
+    {
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i>
+        <p class="mb-0">No se encontraron jugadores con el criterio de búsqueda "<strong>@Model.q</strong>"</p>
+    </div>
+    }
+    else
+    {
+    <div class="alert alert-secondary text-center">
+        <i class="fas fa-arrow-up"></i>
+        <p class="mb-0">Empieza buscando un jugador por nombre.</p>
+    </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mostrar indicador de carga al enviar búsqueda
+            const searchForm = document.querySelector('.search-form');
+            if (searchForm) {
+                searchForm.addEventListener('submit', function () {
+                    const loadingIndicator = document.getElementById('loadingIndicator');
+                    if (loadingIndicator) {
+                        loadingIndicator.style.display = 'block';
+                    }
+                });
+            }
+        });
+    </script>
+}

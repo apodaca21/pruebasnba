@@ -1,0 +1,159 @@
+﻿@page
+@model NBADATA.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Registro";
+}
+
+<style>
+    .auth-container {
+        min-height: calc(100vh - 80px);
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+    }
+    
+    .auth-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 3rem;
+        max-width: 450px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .auth-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #ea580c, #f97316);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+    }
+    
+    .auth-title {
+        color: white;
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+    
+    .auth-subtitle {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1rem;
+    }
+    
+    .auth-form .form-label {
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .auth-form .form-control {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+    }
+    
+    .auth-form .form-control:focus {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: #fb923c;
+        box-shadow: 0 0 0 0.2rem rgba(251, 146, 60, 0.25);
+        color: white;
+    }
+    
+    .auth-form .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .btn-auth {
+        width: 100%;
+        background: linear-gradient(135deg, #ea580c, #f97316);
+        border: none;
+        color: white;
+        padding: 0.875rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+    }
+    
+    .btn-auth:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(234, 88, 12, 0.4);
+        background: linear-gradient(135deg, #f97316, #fb923c);
+    }
+    
+    .text-danger {
+        color: #ff6b6b !important;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .validation-summary-errors {
+        background: rgba(255, 107, 107, 0.1);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .validation-summary-errors ul {
+        margin: 0;
+        padding-left: 1.5rem;
+        color: #ff6b6b;
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">🏀</div>
+            <h1 class="auth-title">CREAR CUENTA</h1>
+            <p class="auth-subtitle">Únete a NBA DATA</p>
+        </div>
+        
+        <form method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger validation-summary-errors"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Email" class="form-label">Email</label>
+                <input asp-for="Input.Email" class="form-control" placeholder="tu@email.com" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label">Contraseña</label>
+                <input asp-for="Input.Password" class="form-control" placeholder="Mínimo 6 caracteres" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ConfirmPassword" class="form-label">Confirmar Contraseña</label>
+                <input asp-for="Input.ConfirmPassword" class="form-control" placeholder="Repite tu contraseña" />
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
+
+            <button class="btn btn-auth" type="submit">REGISTRARME</button>
+        </form>
+    </div>
+</div>
+
+<partial name="_ValidationScriptsPartial" />

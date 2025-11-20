@@ -1,0 +1,91 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "NBA DATA";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+}
+
+<div class="home-hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <div class="logo-badge">
+                <i class="fas fa-basketball-ball"></i>
+            </div>
+            <h1 class="hero-title">
+                <span class="title-line">NBA</span>
+                <span class="title-line title-gradient">DATA</span>
+            </h1>
+            <p class="hero-subtitle">
+                <span class="highlight">Descubre</span> y <span class="highlight">compara</span> estadísticas de tus jugadores favoritos
+            </p>
+            <p class="hero-description">
+                Explora las estadísticas más completas de la NBA. 
+                Compara rendimiento, analiza tendencias y descubre quiénes dominan la cancha.
+            </p>
+        </div>
+        
+        <div class="hero-actions">
+            <div class="quick-actions">
+                <a class="action-card primary-card" href="/Compare">
+                    <div class="card-icon">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <h3>Comparar Jugadores</h3>
+                    <p>Analiza estadísticas lado a lado</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+                
+                <a class="action-card secondary-card" href="/Players">
+                    <div class="card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Ver Jugadores</h3>
+                    <p>Explora toda la base de datos</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="stats-showcase">
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-basketball-ball"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-number">0+</span>
+                        <span class="stat-label">Jugadores</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-number">0</span>
+                        <span class="stat-label">Equipos</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-number">Live</span>
+                        <span class="stat-label">Actualizado</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/player-search.js" asp-append-version="true"></script>
+}

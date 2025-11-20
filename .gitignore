@@ -1,0 +1,14 @@
+﻿# Archivos temporales de VS y .NET
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.db
+*.sqlite
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+*.vsidx
