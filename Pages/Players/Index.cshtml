@@ -81,9 +81,6 @@
                             <th>Nombre</th>
                             <th>Equipo</th>
                             <th>Posición</th>
-                            <th class="text-center">PTS</th>
-                            <th class="text-center">REB</th>
-                            <th class="text-center">AST</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,36 +94,6 @@
                                 <span class="badge bg-secondary">@p.Team</span>
                             </td>
                             <td>@p.Position</td>
-                            <td class="text-center">
-                                @if (p.Pts > 0)
-                                        {
-                                <span class="badge bg-primary">@p.Pts.ToString("0.0")</span>
-                                        }
-                                        else
-                                        {
-                                <span class="text-muted">-</span>
-                                        }
-                            </td>
-                            <td class="text-center">
-                                @if (p.Reb > 0)
-                                        {
-                                <span class="badge bg-info">@p.Reb.ToString("0.0")</span>
-                                        }
-                                        else
-                                        {
-                                <span class="text-muted">-</span>
-                                        }
-                            </td>
-                            <td class="text-center">
-                                @if (p.Ast > 0)
-                                        {
-                                <span class="badge bg-success">@p.Ast.ToString("0.0")</span>
-                                        }
-                                        else
-                                        {
-                                <span class="text-muted">-</span>
-                                        }
-                            </td>
                         </tr>
                             }
                     </tbody>

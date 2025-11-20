@@ -36,10 +36,9 @@ html, body {
 }
 
 .home-hero {
-
     position: relative;
     min-height: calc(100vh - var(--nav-h) - var(--bottom-h));
-    padding-top: calc(var(--nav-h) + 16px);
+    padding-top: var(--nav-h);
     padding-bottom: calc(var(--bottom-h) + 22px);
     display: flex;
     flex-direction: column;
