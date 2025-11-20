@@ -20,7 +20,7 @@
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-dark text-white">
             <h5 class="mb-0">
-                <i class="fas fa-search"></i> Buscar Jugadores
+                <i class="fas fa-search"></i> 
             </h5>
         </div>
         <div class="card-body">
@@ -90,31 +90,9 @@
 
     @if (Model.Result1 != null && Model.Result2 != null)
     {
-        @* Encabezado con fotos de los jugadores y selector de temporada *@
+        @* Encabezado con fotos de los jugadores *@
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-12 text-center">
-                        <h5 class="mb-2">
-                            <i class="fas fa-calendar-alt"></i> Temporada: <strong>@Model.Season</strong>
-                        </h5>
-                        <form method="get" class="d-inline">
-                            <input type="hidden" name="player1" value="@Model.Player1" />
-                            <input type="hidden" name="player2" value="@Model.Player2" />
-                            <div class="input-group" style="max-width: 300px; margin: 0 auto;">
-                                <label class="input-group-text" for="seasonChangeSelect">
-                                    <i class="fas fa-calendar"></i>
-                                </label>
-                                <select name="season" class="form-select" id="seasonChangeSelect" onchange="this.form.submit()">
-                                    @foreach (var season in Model.AvailableSeasons)
-                                    {
-                                        <option value="@season" selected="@(season == Model.Season)">@season</option>
-                                    }
-                                </select>
-                            </div>
-                        </form>
-                    </div>
-                </div>
                 <div class="row">
                     <div class="col-md-6 text-center">
                         <div class="player-info">
@@ -160,11 +138,6 @@
 
         @* Tabla comparativa de estadísticas *@
         <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white">
-                <h4 class="mb-0 text-center">
-                    <i class="fas fa-chart-bar"></i> Comparación de Estadísticas
-                </h4>
-            </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover mb-0">
