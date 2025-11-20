@@ -41,7 +41,7 @@ public class IndexModel : PageModel
                     // Convertir los resultados de la API al modelo Player
                     // Obtener estadísticas para los jugadores encontrados
                     Players = new List<Player>();
-                    foreach (var apiPlayer in apiPlayers.Take(50)) // Limitar a 50 para no sobrecargar
+                    foreach (var apiPlayer in apiPlayers.Take(100)) // Limitar a 50 para no sobrecargar
                     {
                         var player = await ConvertToPlayerWithStatsAsync(apiPlayer);
                         Players.Add(player);
@@ -64,8 +64,8 @@ public class IndexModel : PageModel
             }
             else
             {
-                // Sin búsqueda: obtener primera página de jugadores de la API (25 jugadores)
-                var apiPlayers = await _nbaApi.GetAllPlayersAsync(perPage: 25, maxPages: 1);
+                // Sin búsqueda: obtener primera página de jugadores de la API (100 jugadores)
+                var apiPlayers = await _nbaApi.GetAllPlayersAsync(perPage: 100, maxPages: 1);
                 
                 if (apiPlayers.Any())
                 {
@@ -81,6 +81,10 @@ public class IndexModel : PageModel
                     {
                         ShowingApiResults = false;
                         ApiErrorMessage = "Error conectando con la API. Mostrando jugadores de la base de datos local.";
+                        Players = await _db.Players
+                            .OrderBy(p => p.FullName)
+                            .Take(100)
+                            .ToListAsync();
                     }
                 }
             }
